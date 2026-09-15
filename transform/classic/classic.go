@@ -109,38 +109,37 @@ func claimsForOperation(op xdr.Operation, result xdr.OperationResult) ([]xdr.Cla
 		}
 		return claims, event.VenuePathPayment, nil
 
+	// Union arms are checked for nil directly: the generated Get* accessors
+	// dereference the arm pointer and would panic on malformed input.
 	case xdr.OperationTypeManageSellOffer:
-		res, ok := tr.GetManageSellOfferResult()
-		if !ok {
+		res := tr.ManageSellOfferResult
+		if res == nil {
 			return nil, "", fmt.Errorf("manage sell offer result is missing")
 		}
-		success, ok := res.GetSuccess()
-		if !ok {
+		if res.Code != xdr.ManageSellOfferResultCodeManageSellOfferSuccess || res.Success == nil {
 			return nil, "", fmt.Errorf("manage sell offer result code %d in successful transaction", res.Code)
 		}
-		return success.OffersClaimed, event.VenueClassicDEX, nil
+		return res.Success.OffersClaimed, event.VenueClassicDEX, nil
 
 	case xdr.OperationTypeManageBuyOffer:
-		res, ok := tr.GetManageBuyOfferResult()
-		if !ok {
+		res := tr.ManageBuyOfferResult
+		if res == nil {
 			return nil, "", fmt.Errorf("manage buy offer result is missing")
 		}
-		success, ok := res.GetSuccess()
-		if !ok {
+		if res.Code != xdr.ManageBuyOfferResultCodeManageBuyOfferSuccess || res.Success == nil {
 			return nil, "", fmt.Errorf("manage buy offer result code %d in successful transaction", res.Code)
 		}
-		return success.OffersClaimed, event.VenueClassicDEX, nil
+		return res.Success.OffersClaimed, event.VenueClassicDEX, nil
 
 	default: // xdr.OperationTypeCreatePassiveSellOffer
-		res, ok := tr.GetCreatePassiveSellOfferResult()
-		if !ok {
+		res := tr.CreatePassiveSellOfferResult
+		if res == nil {
 			return nil, "", fmt.Errorf("create passive sell offer result is missing")
 		}
-		success, ok := res.GetSuccess()
-		if !ok {
+		if res.Code != xdr.ManageSellOfferResultCodeManageSellOfferSuccess || res.Success == nil {
 			return nil, "", fmt.Errorf("create passive sell offer result code %d in successful transaction", res.Code)
 		}
-		return success.OffersClaimed, event.VenueClassicDEX, nil
+		return res.Success.OffersClaimed, event.VenueClassicDEX, nil
 	}
 }
 
