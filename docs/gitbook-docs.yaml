@@ -1,0 +1,47 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+
+site:
+  title: Stellar Trade Processor
+  structure:
+    - type: space
+      key: space-introduction
+      title: Introduction
+      path: introduction
+      default: true
+      content:
+        directory: ./introduction
+
+    - type: space
+      key: space-package-reference
+      title: Package Reference
+      path: package-reference
+      content:
+        directory: ./package-reference
+
+    - type: space
+      key: space-for-library-consumers
+      title: For Library Consumers
+      path: for-library-consumers
+      content:
+        directory: ./for-library-consumers
+
+    - type: space
+      key: space-for-contributors
+      title: For Contributors
+      path: for-contributors
+      content:
+        directory: ./for-contributors
+
+    - type: space
+      key: space-developer-guide
+      title: Developer Guide
+      path: developer-guide
+      content:
+        directory: ./developer-guide
+
+    - type: space
+      key: space-contributing
+      title: Contributing
+      path: contributing
+      content:
+        directory: ./contributing
