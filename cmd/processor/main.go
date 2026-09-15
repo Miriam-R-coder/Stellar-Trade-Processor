@@ -3,9 +3,9 @@
 //
 // Backfill a bounded range:
 //
-//	processor --mode=backfill --rpc-url=<url> --start=<ledger> --end=<ledger>
+//	processor --mode=backfill --rpc-url=<url> --start-ledger=<ledger> --end-ledger=<ledger>
 //
-// Stream live ledgers (from --start, or the latest ledger when omitted):
+// Stream live ledgers (from --start-ledger, or the latest ledger when omitted):
 //
 //	processor --mode=stream --rpc-url=<url>
 package main
@@ -74,8 +74,8 @@ func parseFlags(args []string) (config, error) {
 	fs.StringVar(&cfg.mode, "mode", "", "run mode: stream or backfill (required)")
 	fs.StringVar(&cfg.rpcURL, "rpc-url", "", "Stellar RPC endpoint URL (required)")
 	fs.StringVar(&cfg.networkPassphrase, "network-passphrase", network.PublicNetworkPassphrase, "network passphrase")
-	fs.UintVar(&cfg.start, "start", 0, "first ledger to process (required for backfill; stream defaults to the latest ledger)")
-	fs.UintVar(&cfg.end, "end", 0, "last ledger to process, inclusive (backfill only)")
+	fs.UintVar(&cfg.start, "start-ledger", 0, "first ledger to process (required for backfill; stream defaults to the latest ledger)")
+	fs.UintVar(&cfg.end, "end-ledger", 0, "last ledger to process, inclusive (backfill only)")
 	fs.StringVar(&cfg.soroswapRouters, "soroswap-router", soroban.SoroswapMainnetRouter, "comma-separated Soroswap router contract addresses")
 	fs.UintVar(&cfg.bufferSize, "buffer-size", 0, "RPC ledger backend buffer size (0 uses the SDK default)")
 	if err := fs.Parse(args); err != nil {
@@ -87,20 +87,20 @@ func parseFlags(args []string) (config, error) {
 	case cfg.rpcURL == "":
 		return config{}, errors.New("--rpc-url is required")
 	case cfg.start > maxUint32 || cfg.end > maxUint32 || cfg.bufferSize > maxUint32:
-		return config{}, errors.New("--start, --end and --buffer-size must fit in uint32")
+		return config{}, errors.New("--start-ledger, --end-ledger and --buffer-size must fit in uint32")
 	}
 
 	switch cfg.mode {
 	case modeBackfill:
 		if cfg.start == 0 || cfg.end == 0 {
-			return config{}, errors.New("backfill mode requires --start and --end")
+			return config{}, errors.New("backfill mode requires --start-ledger and --end-ledger")
 		}
 		if cfg.end < cfg.start {
-			return config{}, fmt.Errorf("--end %d is before --start %d", cfg.end, cfg.start)
+			return config{}, fmt.Errorf("--end-ledger %d is before --start-ledger %d", cfg.end, cfg.start)
 		}
 	case modeStream:
 		if cfg.end != 0 {
-			return config{}, errors.New("--end is not valid in stream mode")
+			return config{}, errors.New("--end-ledger is not valid in stream mode")
 		}
 	default:
 		return config{}, fmt.Errorf("--mode must be %q or %q, got %q", modeStream, modeBackfill, cfg.mode)

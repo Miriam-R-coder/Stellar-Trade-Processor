@@ -2,7 +2,7 @@
 // a backfill source over a Stellar RPC endpoint, the classic and Soroban
 // transformers (with the Soroswap adapter registered), and the JSON line sink.
 //
-//	go run ./examples/basic --rpc-url=<url> --start=<ledger> --end=<ledger>
+//	go run ./examples/basic --rpc-url=<url> --start-ledger=<ledger> --end-ledger=<ledger>
 package main
 
 import (
@@ -26,11 +26,11 @@ import (
 
 func main() {
 	rpcURL := flag.String("rpc-url", "", "Stellar RPC endpoint URL (required)")
-	start := flag.Uint("start", 0, "first ledger (required)")
-	end := flag.Uint("end", 0, "last ledger, inclusive (required)")
+	start := flag.Uint("start-ledger", 0, "first ledger (required)")
+	end := flag.Uint("end-ledger", 0, "last ledger, inclusive (required)")
 	flag.Parse()
 	if *rpcURL == "" || *start == 0 || *end < *start {
-		fmt.Fprintln(os.Stderr, "usage: basic --rpc-url=<url> --start=<ledger> --end=<ledger>")
+		fmt.Fprintln(os.Stderr, "usage: basic --rpc-url=<url> --start-ledger=<ledger> --end-ledger=<ledger>")
 		os.Exit(2)
 	}
 
