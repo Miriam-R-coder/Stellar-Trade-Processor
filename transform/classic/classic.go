@@ -89,7 +89,9 @@ func claimsForOperation(op xdr.Operation, result xdr.OperationResult) ([]xdr.Cla
 	switch op.Body.Type {
 	case xdr.OperationTypeManageSellOffer,
 		xdr.OperationTypeManageBuyOffer,
-		xdr.OperationTypeCreatePassiveSellOffer:
+		xdr.OperationTypeCreatePassiveSellOffer,
+		xdr.OperationTypePathPaymentStrictSend,
+		xdr.OperationTypePathPaymentStrictReceive:
 	default:
 		return nil, "", nil
 	}
@@ -100,6 +102,13 @@ func claimsForOperation(op xdr.Operation, result xdr.OperationResult) ([]xdr.Cla
 	}
 
 	switch op.Body.Type {
+	case xdr.OperationTypePathPaymentStrictSend, xdr.OperationTypePathPaymentStrictReceive:
+		claims, err := pathPaymentClaims(tr)
+		if err != nil {
+			return nil, "", err
+		}
+		return claims, event.VenuePathPayment, nil
+
 	case xdr.OperationTypeManageSellOffer:
 		res, ok := tr.GetManageSellOfferResult()
 		if !ok {
