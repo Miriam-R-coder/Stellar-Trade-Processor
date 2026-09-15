@@ -88,6 +88,20 @@ func poolClaim(sold xdr.Asset, amountSold int64, bought xdr.Asset, amountBought 
 	}
 }
 
+func claimV0(seller byte, sold xdr.Asset, amountSold int64, bought xdr.Asset, amountBought int64) xdr.ClaimAtom {
+	return xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeV0,
+		V0: &xdr.ClaimOfferAtomV0{
+			SellerEd25519: testKey(seller),
+			OfferId:       42,
+			AssetSold:     sold,
+			AmountSold:    xdr.Int64(amountSold),
+			AssetBought:   bought,
+			AmountBought:  xdr.Int64(amountBought),
+		},
+	}
+}
+
 func manageSellOp(source *xdr.MuxedAccount) xdr.Operation {
 	return xdr.Operation{
 		SourceAccount: source,
@@ -331,6 +345,107 @@ func TestTransformOfferFills(t *testing.T) {
 				[]xdr.OperationResult{manageSellResult()},
 			),
 			wantErr: "2 operations but 1 results",
+		},
+		{
+			name: "claim atom type V0 is covered",
+			tx: buildTx(xdr.TransactionResultCodeTxSuccess,
+				[]xdr.Operation{manageSellOp(nil)},
+				[]xdr.OperationResult{manageSellResult(
+					claimV0(0x03, usdc, 100_0000000, nativeAsset(), 250_0000000),
+				)},
+			),
+			want: []event.TradeEvent{
+				withTrade(base(0, address(0x01)), "", nativeEvent, usdcEvent, "250.0000000", "100.0000000", "0.4000000", address(0x03)),
+			},
+		},
+		{
+			name: "muxed operation source account resolves to underlying address",
+			tx: buildTx(xdr.TransactionResultCodeTxSuccess,
+				[]xdr.Operation{manageSellOp(&xdr.MuxedAccount{
+					Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+					Med25519: &xdr.MuxedAccountMed25519{
+						Id:      12345,
+						Ed25519: testKey(0x02),
+					},
+				})},
+				[]xdr.OperationResult{manageSellResult(
+					orderBookClaim(0x03, nativeAsset(), 1_0000000, longAsset, 3_0000000),
+				)},
+			),
+			want: []event.TradeEvent{
+				withTrade(base(0, address(0x02)), "", longEvent, nativeEvent, "3.0000000", "1.0000000", "0.3333333", address(0x03)),
+			},
+		},
+		{
+			name: "fee bump transaction attributes events to inner source account",
+			tx: ingest.LedgerTransaction{
+				Hash: testTxHash,
+				Envelope: xdr.TransactionEnvelope{
+					Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
+					FeeBump: &xdr.FeeBumpTransactionEnvelope{
+						Tx: xdr.FeeBumpTransaction{
+							FeeSource: muxed(0x99),
+							InnerTx: xdr.FeeBumpTransactionInnerTx{
+								Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+								V1: &xdr.TransactionV1Envelope{
+									Tx: xdr.Transaction{
+										SourceAccount: muxed(0x01),
+										Operations:    []xdr.Operation{manageSellOp(nil)},
+									},
+								},
+							},
+						},
+					},
+				},
+				Result: xdr.TransactionResultPair{
+					TransactionHash: testTxHash,
+					Result: xdr.TransactionResult{
+						Result: xdr.TransactionResultResult{
+							Code:    xdr.TransactionResultCodeTxSuccess,
+							Results: &[]xdr.OperationResult{manageSellResult(orderBookClaim(0x03, usdc, 100_0000000, nativeAsset(), 250_0000000))},
+						},
+					},
+				},
+			},
+			want: []event.TradeEvent{
+				withTrade(base(0, address(0x01)), "", nativeEvent, usdcEvent, "250.0000000", "100.0000000", "0.4000000", address(0x03)),
+			},
+		},
+		{
+			name: "path payment with identical assets and no claims emits no events",
+			tx: buildTx(xdr.TransactionResultCodeTxSuccess,
+				[]xdr.Operation{{
+					Body: xdr.OperationBody{
+						Type: xdr.OperationTypePathPaymentStrictReceive,
+						PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{
+							SendAsset:   nativeAsset(),
+							DestAsset:   nativeAsset(),
+							DestAmount:  100_0000000,
+							SendMax:     100_0000000,
+							Destination: muxed(0x02),
+						},
+					},
+				}},
+				[]xdr.OperationResult{{
+					Code: xdr.OperationResultCodeOpInner,
+					Tr: &xdr.OperationResultTr{
+						Type: xdr.OperationTypePathPaymentStrictReceive,
+						PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
+							Code:    xdr.PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSuccess,
+							Success: &xdr.PathPaymentStrictReceiveResultSuccess{Offers: nil},
+						},
+					},
+				}},
+			),
+			want: nil,
+		},
+		{
+			name: "operation result index out of bounds returns error without panic",
+			tx: buildTx(xdr.TransactionResultCodeTxSuccess,
+				[]xdr.Operation{manageSellOp(nil)},
+				[]xdr.OperationResult{},
+			),
+			wantErr: "operations but 0 results",
 		},
 	}
 
